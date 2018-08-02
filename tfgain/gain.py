@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from gain_discriminator import GAINDiscriminator
-from gain_generator import GAINGenerator
-from mask import MissingMask
+from .gain_discriminator import GAINDiscriminator
+from .gain_generator import GAINGenerator
+from .mask import MissingMask
 
 class GAIN(object):
     """Implementation of next paper:
