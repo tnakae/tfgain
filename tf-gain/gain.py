@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from gain_decoder import GAINDecoder
+from gain_discriminator import GAINDiscriminator
 from gain_generator import GAINGenerator
 from mask import MissingMask
 
@@ -18,8 +18,8 @@ class GAIN(object):
     and discriminator infers which values are imputed.
 
     This implementation uses tensorflow.
-    To impute missing value, need to call "fit" to train at first.
-    Then, you call "transform" to impute.
+    To impute missing value, call "fit" to train at first.
+    Then, call "transform" to impute.
     """
     def __init__(self, n_batch=64, alpha=0.1):
         """
@@ -34,7 +34,7 @@ class GAIN(object):
         self.alpha = alpha
 
     def fit(self, x):
-        """fit GAIN imputation model using training data x
+        """fit GAIN imputation model against training data x
         with missing value
 
         Parameters

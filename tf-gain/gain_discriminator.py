@@ -1,6 +1,6 @@
 """
 """
-class GAINDecoder(object):
+class GAINDiscriminator(object):
     """
     """
     def __init__(self):
