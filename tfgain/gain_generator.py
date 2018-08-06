@@ -27,7 +27,14 @@ class GAINGenerator(object):
             generated data frame which has candidate values
             (even in observed cell)
         """
-        pass
+        assert x.shape == m.shape == z.shape
+        out = tf.concat([x, m, z], axis=1, name="concat")
+        d = x.shape[1]
+
+        out = tf.layers.dense(out, d, activation=tf.tanh, name="dense1")
+        out = tf.layers.dense(out, int(d/2), activation=tf.tanh, name="dense2")
+        out = tf.layers.dense(out, d, activation=tf.sigmoid, name="dense3")
+        return out
 
     def impute(self, x, xbar, m):
         """Do missing value imputation. This method uses candidate
@@ -50,7 +57,8 @@ class GAINGenerator(object):
         xhat : tf.Tensor
             result of missing value imputation of x.
         """
-        pass
+        xhat = x * m + xbar * (1. - m)
+        return xhat
 
     def adversarial_loss(self, mhat, m, b):
         """Calculate adversarial loss. This method compares
@@ -74,7 +82,11 @@ class GAINGenerator(object):
         loss : tf.Tensor (no dimension)
             adversarial loss calculated
         """
-        pass
+        eps = 1e-7
+        log_loss = - (1 - m) * tf.log(mhat + eps)
+        loss = tf.reduce_sum((1 - b) * log_loss)
+
+        return loss
 
     def generate_loss(self, x, xbar, m):
         """Calculate generate loss.
@@ -97,20 +109,7 @@ class GAINGenerator(object):
         loss : tf.Tensor (no dimension)
             generate loss calculated
         """
-        pass
+        mse = tf.square(x - xbar)
+        loss = tf.reduce_sum(m * mse)
 
-    def optmize(self, loss):
-        """Return optimizer of generator.
-        This optimizer control variables only in the generator.
-
-        Parameters
-        ----------
-        loss : tf.Tensor (no dimenstion)
-            loss to be minimized
-
-        Returns
-        -------
-        minimizer : tf.Operation
-            minimizer to minimize loss
-        """
-        pass
+        return loss
