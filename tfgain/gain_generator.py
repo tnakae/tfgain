@@ -12,23 +12,27 @@ class GAINGenerator(object):
 
         Parameters
         ----------
-        x : tf.Tensor
+        x : tf.Tensor of tf.float32
             data frame which is target of missing value imputation.
-        m : tf.Tensor
-            mask data indicating missing positions in x by 0/1 flag
-            (0=missing, 1=observed ; same size as x)
-        z : tf.Tensor
+        m : tf.Tensor of tf.bool
+            mask data indicating missing positions in x.
+            (if True, observed ; same size as x)
+        z : tf.Tensor of tf.float32
             data frame each cell of which has random numbers
             to generate imputed values (same size as x)
 
         Returns
         -------
-        xbar : tf.Tensor
+        xbar : tf.Tensor of tf.float32
             generated data frame which has candidate values
             (even in observed cell)
         """
         assert x.shape == m.shape == z.shape
-        out = tf.concat([x, m, z], axis=1, name="concat")
+        assert x.dtype == z.shape == tf.float32
+        assert m.dtype == tf.bool
+
+        mf = tf.cast(m, dtype=tf.float32, name="mask_float")
+        out = tf.concat([x, mf, z], axis=1, name="concat")
         d = x.shape[1]
 
         out = tf.layers.dense(out, d, activation=tf.tanh, name="dense1")
@@ -42,22 +46,25 @@ class GAINGenerator(object):
 
         Parameters
         ----------
-        x : tf.Tensor
+        x : tf.Tensor of tf.float32
             data frame which is target of missing value imputation.
-        xbar : tf.Tensor
+        xbar : tf.Tensor of tf.float32
             data frame which is result of generate method.
             all of missing value of x are imputed by candidate values.
             (same size as x)
-        m : tf.Tensor
-            mask data indicating missing positions in x by 0/1 flag
-            (0=missing, 1=observed ; same size as x)
+        m : tf.Tensor of tf.bool
+            mask data indicating missing positions (if True, observed)
 
         Returns
         -------
         xhat : tf.Tensor
             result of missing value imputation of x.
         """
-        xhat = x * m + xbar * (1. - m)
+        assert x.shape == xbar.shape == m.shape
+        assert x.dtype == xbar.shape == tf.float32
+        assert m.dtype == tf.bool
+
+        xhat = tf.cond(m, x, xbar)
         return xhat
 
     def adversarial_loss(self, mhat, m, b):
@@ -67,24 +74,28 @@ class GAINGenerator(object):
 
         Parameters
         ----------
-        mhat : tf.Tensor
+        mhat : tf.Tensor of tf.float32
             A prediction result of missing mask of discriminator.
             It contains probability whether it is observed.
-        m : tf.Tensor
-            actual missing mask (0/1 flags, same size as mhat)
-        b : tf.Tensor
-            Hint flag data (integer)
-            each row has single "1", which is selected at random.
-            The other cells have "0" (same size as mhat)
+        m : tf.Tensor of tf.bool
+            actual missing mask (same size as mhat)
+        b : tf.Tensor of tf.bool
+            Hint flag data
+            each row has only one True, which is selected at random.
+            The other cells are False (same size as mhat)
 
         Returns
         -------
-        loss : tf.Tensor (no dimension)
+        loss : tf.Tensor of tf.float32 (no dimension)
             adversarial loss calculated
         """
+        assert mhat.shape == m.shape == b.shape
+        assert mhat.dtype == tf.float32
+        assert m.dtype == b.dtype == tf.bool
+
         eps = 1e-7
-        log_loss = - (1 - m) * tf.log(mhat + eps)
-        loss = tf.reduce_sum((1 - b) * log_loss)
+        log_loss = - tf.cond(m, 0., tf.log(mhat + eps))
+        loss = tf.reduce_sum(tf.cond(b, 0., log_loss))
 
         return loss
 
@@ -94,22 +105,26 @@ class GAINGenerator(object):
 
         Parameters
         ----------
-        x : tf.Tensor
+        x : tf.Tensor of tf.float32
             data frame which is target of missing value imputation.
-        xbar : tf.Tensor
+        xbar : tf.Tensor of tf.float32
             data frame which is result of generate method.
             all of missing value of x are imputed by candidate values.
             (same size as x)
-        m : tf.Tensor
+        m : tf.Tensor of tf.bool
             mask data indicating missing positions in x by 0/1 flag
             (0=missing, 1=observed ; same size as x)
 
         Returns
         -------
-        loss : tf.Tensor (no dimension)
+        loss : tf.Tensor of tf.float32 (no dimension)
             generate loss calculated
         """
+        assert x.shape == xbar.shape == m.shape
+        assert x.dtype == xbar.dtype == tf.float32
+        assert m.dtype == tf.bool
+
         mse = tf.square(x - xbar)
-        loss = tf.reduce_sum(m * mse)
+        loss = tf.reduce_sum(tf.cond(m, mse, 0))
 
         return loss

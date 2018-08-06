@@ -8,8 +8,8 @@ class MissingMask(object):
         """
         Parameters
         ----------
-        m : array like (2d)
-            missing flags (0=missing, 1=observed)
+        m : array like (2d array of np.bool)
+            missing flags (if True, observed)
         """
         self.m = np.array(m)
 
@@ -26,7 +26,7 @@ class MissingMask(object):
         y : pd.DataFrame
             data frame into which missing values were injected.
         """
-        y = x.where(self.m == 1, np.nan)
+        y = x.where(self.m, np.nan)
         return y
 
     def fill(self, x):
@@ -42,7 +42,7 @@ class MissingMask(object):
         y : pd.DataFrame
             data frame into which missing values were filled by zeros.
         """
-        y = x.where(self.m == 1, 0)
+        y = x.where(self.m, 0)
         return y
 
     @staticmethod
@@ -59,7 +59,7 @@ class MissingMask(object):
         mask : MissingMask
             mask object extracted
         """
-        m = x.where(np.isnan(x), 0, 1)
+        m = ~np.isnan(x)
         mask = MissingMask(m)
         return mask
 
@@ -73,6 +73,6 @@ class MissingMask(object):
             missing rate (0-1)
         """
         z = np.random.uniform(size=x.shape)
-        m = np.where(z < rate, 0, 1)
+        m = rate < z
         mask = MissingMask(m)
         return mask
