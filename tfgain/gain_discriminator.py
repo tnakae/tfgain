@@ -7,7 +7,7 @@ class GAINDiscriminator(object):
     def __init__(self):
         pass
 
-    def infer(self, xbar, m, b):
+    def infer(self, xhat, m, b):
         """return probability whether each position are observed.
 
         Parameters
@@ -27,13 +27,14 @@ class GAINDiscriminator(object):
         mhat : tf.Tensor
             result probabilities
         """
-        assert xhat.shape == m.shape == b.shape
+        assert xhat.shape.as_list() == m.shape.as_list() == b.shape.as_list()
         assert xhat.dtype == tf.float32
         assert m.dtype == b.dtype == tf.bool
 
         # calculate hint tensor
-        h = tf.cond(b, tf.cast(m, dtype=tf.float32), 0.5,
-                    name="hint")
+        h = tf.where(b, tf.cast(m, dtype=tf.float32),
+                     tf.ones_like(m, dtype=tf.float32) * 0.5,
+                     name="hint")
 
         # concat imputed tensor and hint
         out = tf.concat([xhat, h], axis=1)
@@ -42,7 +43,7 @@ class GAINDiscriminator(object):
         d = xhat.shape[1]
         out = tf.layers.dense(out, d, activation=tf.tanh,
                               name="dense1")
-        out = tf.layers.dense(out, int(d/2), activation=tf.tanh,
+        out = tf.layers.dense(out, int(int(d)/2), activation=tf.tanh,
                               name="dense2")
         mhat = tf.layers.dense(out, d, activation=tf.sigmoid,
                                name="dense3")
@@ -69,13 +70,14 @@ class GAINDiscriminator(object):
         loss : tf.Tensor (no dimension)
             discriminator loss calculated (negative log loss)
         """
-        assert mhat.shape == m.shape == b.shape
+        assert mhat.shape.as_list() == m.shape.as_list() == b.shape.as_list()
         assert mhat.dtype == tf.float32
         assert m.dtype == b.dtype == tf.bool
 
         eps = 1e-7
-        log_loss = tf.cond(m, tf.log(mhat + eps),
-                           tf.log(1. - mhat + eps))
-        loss = - tf.reduce_sum(tf.cond(b, 0., log_loss))
+        log_loss = tf.where(m, tf.log(mhat + eps),
+                            tf.log(1. - mhat + eps))
+        loss = - tf.reduce_sum(tf.where(b, tf.zeros_like(b, dtype=tf.float32),
+                                        log_loss))
 
         return loss

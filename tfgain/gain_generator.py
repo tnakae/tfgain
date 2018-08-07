@@ -27,8 +27,8 @@ class GAINGenerator(object):
             generated data frame which has candidate values
             (even in observed cell)
         """
-        assert x.shape == m.shape == z.shape
-        assert x.dtype == z.shape == tf.float32
+        assert x.shape.as_list() == m.shape.as_list() == z.shape.as_list()
+        assert x.dtype == z.dtype == tf.float32
         assert m.dtype == tf.bool
 
         mf = tf.cast(m, dtype=tf.float32, name="mask_float")
@@ -36,7 +36,7 @@ class GAINGenerator(object):
         d = x.shape[1]
 
         out = tf.layers.dense(out, d, activation=tf.tanh, name="dense1")
-        out = tf.layers.dense(out, int(d/2), activation=tf.tanh, name="dense2")
+        out = tf.layers.dense(out, int(int(d)/2), activation=tf.tanh, name="dense2")
         out = tf.layers.dense(out, d, activation=tf.sigmoid, name="dense3")
         return out
 
@@ -60,11 +60,11 @@ class GAINGenerator(object):
         xhat : tf.Tensor
             result of missing value imputation of x.
         """
-        assert x.shape == xbar.shape == m.shape
-        assert x.dtype == xbar.shape == tf.float32
+        assert x.shape.as_list() == xbar.shape.as_list() == m.shape.as_list()
+        assert x.dtype == xbar.dtype == tf.float32
         assert m.dtype == tf.bool
 
-        xhat = tf.cond(m, x, xbar)
+        xhat = tf.where(m, x, xbar)
         return xhat
 
     def adversarial_loss(self, mhat, m, b):
@@ -89,13 +89,15 @@ class GAINGenerator(object):
         loss : tf.Tensor of tf.float32 (no dimension)
             adversarial loss calculated
         """
-        assert mhat.shape == m.shape == b.shape
+        assert mhat.shape.as_list() == m.shape.as_list() == b.shape.as_list()
         assert mhat.dtype == tf.float32
         assert m.dtype == b.dtype == tf.bool
 
         eps = 1e-7
-        log_loss = - tf.cond(m, 0., tf.log(mhat + eps))
-        loss = tf.reduce_sum(tf.cond(b, 0., log_loss))
+        log_loss = - tf.where(m, tf.zeros_like(m, dtype=tf.float32),
+                              tf.log(mhat + eps))
+        loss = tf.reduce_sum(tf.where(b, tf.zeros_like(b, dtype=tf.float32),
+                                      log_loss))
 
         return loss
 
@@ -120,11 +122,12 @@ class GAINGenerator(object):
         loss : tf.Tensor of tf.float32 (no dimension)
             generate loss calculated
         """
-        assert x.shape == xbar.shape == m.shape
+        assert x.shape.as_list() == xbar.shape.as_list() == m.shape.as_list()
         assert x.dtype == xbar.dtype == tf.float32
         assert m.dtype == tf.bool
 
         mse = tf.square(x - xbar)
-        loss = tf.reduce_sum(tf.cond(m, mse, 0))
+        loss = tf.reduce_sum(tf.where(m, mse,
+                             tf.zeros_like(m, dtype=tf.float32)))
 
         return loss
