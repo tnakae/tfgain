@@ -7,7 +7,7 @@ class GAINDiscriminator(object):
     def __init__(self):
         pass
 
-    def infer(self, xhat, m, b):
+    def infer(self, xhat, m, b, drop):
         """return probability whether each position are observed.
 
         Parameters
@@ -32,8 +32,8 @@ class GAINDiscriminator(object):
         assert m.dtype == b.dtype == tf.bool
 
         # calculate hint tensor
-        h = tf.where(b, tf.cast(m, dtype=tf.float32),
-                     tf.ones_like(m, dtype=tf.float32) * 0.5,
+        h = tf.where(b, tf.ones_like(m, dtype=tf.float32) * 0.5,
+                     tf.cast(m, dtype=tf.float32),
                      name="hint")
 
         # concat imputed tensor and hint
@@ -43,8 +43,10 @@ class GAINDiscriminator(object):
         d = xhat.shape[1]
         out = tf.layers.dense(out, d, activation=tf.tanh,
                               name="dense1")
+        out = tf.layers.dropout(out, drop)
         out = tf.layers.dense(out, int(int(d)/2), activation=tf.tanh,
                               name="dense2")
+        out = tf.layers.dropout(out, drop)
         mhat = tf.layers.dense(out, d, activation=tf.sigmoid,
                                name="dense3")
         return mhat
@@ -77,7 +79,7 @@ class GAINDiscriminator(object):
         eps = 1e-7
         log_loss = tf.where(m, tf.log(mhat + eps),
                             tf.log(1. - mhat + eps))
-        loss = - tf.reduce_sum(tf.where(b, tf.zeros_like(b, dtype=tf.float32),
-                                        log_loss))
+        loss = - tf.reduce_sum(tf.where(b, log_loss,
+                                        tf.zeros_like(b, dtype=tf.float32)))
 
         return loss

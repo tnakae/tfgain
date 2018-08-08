@@ -7,7 +7,7 @@ class GAINGenerator(object):
     def __init__(self):
         pass
 
-    def generate(self, x, m, z):
+    def generate(self, x, m, z, drop):
         """Generate candidate values to be imputated.
 
         Parameters
@@ -36,7 +36,9 @@ class GAINGenerator(object):
         d = x.shape[1]
 
         out = tf.layers.dense(out, d, activation=tf.tanh, name="dense1")
+        out = tf.layers.dropout(out, drop)
         out = tf.layers.dense(out, int(int(d)/2), activation=tf.tanh, name="dense2")
+        out = tf.layers.dropout(out, drop)
         out = tf.layers.dense(out, d, activation=tf.sigmoid, name="dense3")
         return out
 
@@ -96,8 +98,8 @@ class GAINGenerator(object):
         eps = 1e-7
         log_loss = - tf.where(m, tf.zeros_like(m, dtype=tf.float32),
                               tf.log(mhat + eps))
-        loss = tf.reduce_sum(tf.where(b, tf.zeros_like(b, dtype=tf.float32),
-                                      log_loss))
+        loss = tf.reduce_sum(tf.where(b, log_loss,
+                                      tf.zeros_like(b, dtype=tf.float32)))
 
         return loss
 
