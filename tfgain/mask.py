@@ -73,6 +73,6 @@ class MissingMask(object):
             missing rate (0-1)
         """
         z = np.random.uniform(size=x.shape)
-        m = rate < z
+        m = np.percentile(z, rate * 100, axis=1)[:,None] < z
         mask = MissingMask(m)
         return mask
