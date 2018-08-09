@@ -40,7 +40,8 @@ class GAINGenerator(object):
         out = tf.layers.dense(out, int(int(d)/2), activation=tf.tanh, name="dense2")
         out = tf.layers.dropout(out, drop)
         out = tf.layers.dense(out, d, activation=tf.sigmoid, name="dense3")
-        return out
+        xbar = out
+        return xbar
 
     def impute(self, x, xbar, m):
         """Do missing value imputation. This method uses candidate
@@ -59,7 +60,7 @@ class GAINGenerator(object):
 
         Returns
         -------
-        xhat : tf.Tensor
+        xhat : tf.Tensor of tf.float32
             result of missing value imputation of x.
         """
         assert x.shape.as_list() == xbar.shape.as_list() == m.shape.as_list()
